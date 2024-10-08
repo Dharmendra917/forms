@@ -63,37 +63,36 @@ exports.deleteUser = async (req, res, next) => {
 };
 
 exports.updateUser = async (req, res, next) => {
- try {
-  const data = req.body;
-  const file = req.file;
-  const user = await formModel.findById(req.params.userid).exec();
-  if (!user) {
-    res.status(500).json({ message: "User Not Found!" });
-    return;
+  try {
+    const data = req.body;
+    const file = req.file;
+    const user = await formModel.findById(req.params.userid).exec();
+    if (!user) {
+      res.status(500).json({ message: "User Not Found!" });
+      return;
+    }
+
+    if (file) {
+      await imagekit.deleteFile(user.image.fileId);
+
+      const modified = Date.now() + file.originalname;
+      const { fileId, url } = await imagekit.upload({
+        file: file.buffer,
+        fileName: modified,
+      });
+      user.image = { fileId: fileId, url: url };
+    }
+    user.updatedBy = req.id;
+    user.name = req.body.name;
+    user.email = req.body.email;
+    user.contact = req.body.contact;
+    user.dob = req.body.dob;
+    user.gender = req.body.gender;
+    await user.save();
+    res.status(201).json({ message: "User Update Successfully!" });
+  } catch (error) {
+    console.log(error);
   }
-  
-  if(file){
-    await imagekit.deleteFile(user.image.fileId);  
-    
-    const modified = Date.now() + file.originalname;
-    const { fileId, url } = await imagekit.upload({
-      file: file.buffer,
-      fileName: modified,
-    });
-    user.image = { fileId: fileId, url: url };
-    
-  }
-  user.updatedBy = req.id;
-  user.name = req.body.name;
-  user.email = req.body.email;
-  user.contact = req.body.contact;
-  user.dob = req.body.dob;
-  user.gender = req.body.gender;
-  await user.save();
-  res.status(201).json({ message: "User Update Successfully!" });
- } catch (error) {
-    console.log(error)
- }
 };
 
 exports.uploadDocument = async (req, res, next) => {
@@ -121,13 +120,13 @@ exports.uploadDocument = async (req, res, next) => {
   }
   await user.documents.push(doc._id);
   await user.save();
-  res.status(200).json({ message: "Document Upload Successfully!", title});
+  res.status(200).json({ message: "Document Upload Successfully!", title });
 };
 
 exports.uploadAcademicDetails = async (req, res, next) => {
   const { body } = req;
   const otp = generateNumericOTP(10);
-  const reqData = { ...req.body, academicId: otp };
+  const reqData = { ...req.body, academicId: "A" + otp };
   const academic = await academicModel(reqData).save();
   const user = await formModel.findById(req.params.userId).exec();
   if (!user) {
