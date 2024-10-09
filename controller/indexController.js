@@ -98,6 +98,10 @@ exports.updateUser = async (req, res, next) => {
 exports.uploadDocument = async (req, res, next) => {
   const file = req.file;
   const { title } = req.body;
+  if (!title) {
+    res.status(404).json({ message: "Fill Title!" });
+    return;
+  }
   const otp = generateNumericOTP(10);
   const modified = Date.now() + file.originalname;
   const { fileId, url } = await imagekit.upload({
@@ -120,7 +124,58 @@ exports.uploadDocument = async (req, res, next) => {
   }
   await user.documents.push(doc._id);
   await user.save();
-  res.status(200).json({ message: "Document Upload Successfully!", title });
+  res.status(200).json({ message: "Document Upload Successfully!" });
+};
+
+exports.updateDocument = async (req, res, next) => {
+  try {
+    const file = req.file;
+    const { title } = req.body;
+    const document = await documentModel.findById(req.params.docId).exec();
+    if (!document) return res.status(500).json({ message: "Doc. Not Found!" });
+
+    if (file) {
+      await imagekit.deleteFile(document.personalDocument.fileId);
+      console.log(document.personalDocument.fileId);
+      const modified = Date.now() + file.originalname;
+      const { fileId, url } = await imagekit.upload({
+        file: file.buffer,
+        fileName: modified,
+      });
+      document.personalDocument = { title: title, fileId: fileId, url: url };
+      await document.save();
+    }
+    res.status(200).json({ message: "Doc Update Successfully!" });
+  } catch (error) {
+    res.json(error.message);
+  }
+};
+
+exports.deleteDocument = async (req, res, next) => {
+  const { userId, docId } = req.body;
+  if (!userId) return res.status(500).json({ message: "Pass UserId" });
+  if (!docId) return res.status(500).json({ message: "Pass DocId" });
+  try {
+    const document = await documentModel.findByIdAndDelete(docId).exec();
+    if (!document) {
+      res.status(500).json({ message: "Doc. Not Found!" });
+      return;
+    }
+
+    if (document && document.personalDocument) {
+      await imagekit.deleteFile(document.personalDocument.fileId);
+    }
+    const user = await formModel.findById(userId);
+    if (!user) return res.status(500).json({ message: "User Not Found!" });
+    const isIndex = user.documents.indexOf(docId);
+    if (isIndex == -1)
+      return res.status(500).json({ message: "doc id not found" });
+    user.documents.splice(isIndex);
+    user.save();
+    res.status(200).json({ message: "Doc Deleted Successfully!", user });
+  } catch (error) {
+    res.json(error.message);
+  }
 };
 
 exports.uploadAcademicDetails = async (req, res, next) => {
@@ -139,6 +194,34 @@ exports.uploadAcademicDetails = async (req, res, next) => {
     .json({ message: "Document Upload Successfully!", academic, user });
 };
 
+exports.updateAcademicDetails = async (req, res, next) => {
+  const { body } = req;
+  const academic = await academicModel.findByIdAndUpdate(
+    req.params.academicId,
+    body
+  );
+  res.status(200).json({ message: "Update Successfully!" });
+};
+
+exports.deleteAcademicDetails = async (req, res, next) => {
+  const { body } = req;
+
+  const academic = await academicModel.findByIdAndDelete(
+    req.body.academicId,
+    body
+  );
+  if (!academic)
+    return res.status(500).json({ message: "Academic Details Not Found!" });
+  const user = await formModel.findById(req.body.userId);
+  if (!user) return res.status(500).json({ message: "User Not Found!" });
+  const isIndex = user.academic.indexOf(req.body.academicId);
+  if (isIndex == -1)
+    return res.status(500).json({ message: "doc id not found" });
+  user.academic.splice(isIndex);
+  await user.save();
+  res.status(200).json({ message: "Delete Successfully!" });
+};
+
 exports.read = async (req, res, next) => {
   try {
     const data = await formModel.find().populate([
@@ -148,6 +231,14 @@ exports.read = async (req, res, next) => {
       { path: "academic", select: "" },
     ]);
     res.status(200).json({ meaage: "Rad All Data", data });
+  } catch (error) {
+    res.json(error.message);
+  }
+};
+
+exports.searchOne = async (req, res, next) => {
+  try {
+    res.status(200).json({ meaage: "Rad All Data" });
   } catch (error) {
     res.json(error.message);
   }
