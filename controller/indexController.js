@@ -208,10 +208,7 @@ exports.updateAcademicDetails = async (req, res, next) => {
 exports.deleteAcademicDetails = async (req, res, next) => {
   const { body } = req;
 
-  const academic = await academicModel.findByIdAndDelete(
-    req.body.academicId,
-    body
-  );
+  const academic = await academicModel.findByIdAndDelete(req.body.academicId);
   if (!academic)
     return res.status(500).json({ message: "Academic Details Not Found!" });
   const user = await formModel.findById(req.body.userId);

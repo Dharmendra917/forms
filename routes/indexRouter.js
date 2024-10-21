@@ -69,7 +69,7 @@ router.post(
   updateAcademicDetails
 );
 
-//POST /api/v2/delete-acedmic   Json Data {userId?:String,docId?:String}
+//POST /api/v2/delete-acedmic   Json Data {userId?:String,academicId?:String}
 router.post("/delete-acedmic/", isAuthenticated, deleteAcademicDetails);
 
 //GET  /api/v2/readall
